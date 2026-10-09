@@ -16,7 +16,22 @@ import {
   saveFamilyToCloud,
   saveDistributionToCloud,
   saveKitStockToCloud,
+  resetCloudDataToSample,
 } from './services/reliefCloudService';
+
+function getNextIdNumber(families: Family[]): number {
+  let maxNum = 0;
+  for (const fam of families) {
+    const match = fam.id.match(/\d+/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+  return maxNum + 1;
+}
 
 import { DashboardView } from './components/DashboardView';
 import { RegisterView } from './components/RegisterView';
@@ -86,7 +101,7 @@ export default function App() {
         setData((prev) => ({
           ...prev,
           families: cloudFamilies,
-          nextIdNumber: Math.max(prev.nextIdNumber, cloudFamilies.length + 1),
+          nextIdNumber: Math.max(prev.nextIdNumber, getNextIdNumber(cloudFamilies)),
         }));
       }
       setIsCloudSyncing(false);
@@ -121,60 +136,88 @@ export default function App() {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((current) => (current === msg ? null : current));
-    }, 3200);
+    }, 3500);
   };
 
-  // Register family handler
-  const handleRegisterFamily = (family: Family) => {
+  // Register family handler - saves to Cloud so all connected screens update instantly
+  const handleRegisterFamily = async (family: Family) => {
+    // 1. Optimistic local update
     setData((prev) => {
-      const updatedFamilies = [...prev.families, family];
+      const updatedFamilies = [family, ...prev.families.filter((f) => f.id !== family.id)];
       return {
         ...prev,
         families: updatedFamilies,
-        nextIdNumber: prev.nextIdNumber + 1,
+        nextIdNumber: Math.max(prev.nextIdNumber, getNextIdNumber(updatedFamilies)),
       };
     });
-    // Save to Firestore central cloud database
-    saveFamilyToCloud(family).catch((e) => console.warn('Cloud sync error', e));
-    showToast(`Household ${family.id} registered & synced to Cloud.`);
+
+    // 2. Real-time Cloud Save
+    try {
+      await saveFamilyToCloud(family);
+      showToast(`Household ${family.id} registered & synced live across all screens.`);
+    } catch (err: any) {
+      console.error('Failed to sync family to cloud:', err);
+      showToast(`Warning: Cloud sync error (${err.message || 'offline'}). Data saved locally.`);
+    }
   };
 
-  // Record distribution handler
-  const handleRecordDistribution = (distribution: Distribution) => {
+  // Record distribution handler - saves to Cloud so all screens update stock & ledger
+  const handleRecordDistribution = async (distribution: Distribution) => {
+    // 1. Optimistic local update
     setData((prev) => {
-      const updatedDistributions = [...prev.distributions, distribution];
+      const updatedDistributions = [distribution, ...prev.distributions.filter((d) => d.id !== distribution.id)];
       return {
         ...prev,
         distributions: updatedDistributions,
       };
     });
-    // Save to Firestore central cloud database
-    saveDistributionToCloud(distribution).catch((e) => console.warn('Cloud sync error', e));
-    showToast(`Ration handover logged for ${distribution.familyName} (${distribution.familyId}).`);
+
+    // 2. Real-time Cloud Save
+    try {
+      await saveDistributionToCloud(distribution);
+      showToast(`Ration handover logged for ${distribution.familyName} & synced live.`);
+    } catch (err: any) {
+      console.error('Failed to sync distribution to cloud:', err);
+      showToast(`Warning: Cloud sync error (${err.message || 'offline'}). Handover saved locally.`);
+    }
   };
 
   // Stock update handler
-  const handleUpdateKitStock = (kitId: string, newStock: number) => {
+  const handleUpdateKitStock = async (kitId: string, newStock: number) => {
     setData((prev) => ({
       ...prev,
       kits: prev.kits.map((k) => (k.id === kitId ? { ...k, totalStock: newStock } : k)),
     }));
-    saveKitStockToCloud(kitId, newStock).catch((e) => console.warn('Cloud sync error', e));
-    showToast('Inventory stock updated & synced to Cloud.');
+    try {
+      await saveKitStockToCloud(kitId, newStock);
+      showToast('Inventory stock updated & synced live across screens.');
+    } catch (err: any) {
+      console.error('Failed to update stock in cloud:', err);
+      showToast('Warning: Cloud stock sync issue. Saved locally.');
+    }
   };
 
-  // Reset data handler
-  const handleResetData = () => {
-    if (window.confirm('Reset all FloodRelief records and reload initial sample field data? This cannot be undone.')) {
-      const resetState: StorageData = {
-        families: INITIAL_FAMILIES,
-        distributions: INITIAL_DISTRIBUTIONS,
-        kits: INITIAL_KITS,
-        nextIdNumber: INITIAL_FAMILIES.length + 1,
-      };
-      setData(resetState);
-      saveStoredData(resetState);
-      showToast('Sample emergency relief database restored.');
+  // Reset data handler - resets Firestore so both screens sync back together
+  const handleResetData = async () => {
+    if (window.confirm('Reset all FloodRelief records and reload initial sample field data? This will sync across all connected screens.')) {
+      try {
+        setIsCloudSyncing(true);
+        await resetCloudDataToSample();
+        const resetState: StorageData = {
+          families: INITIAL_FAMILIES,
+          distributions: INITIAL_DISTRIBUTIONS,
+          kits: INITIAL_KITS,
+          nextIdNumber: getNextIdNumber(INITIAL_FAMILIES),
+        };
+        setData(resetState);
+        saveStoredData(resetState);
+        showToast('Sample emergency relief database restored & synced across all screens.');
+      } catch (err: any) {
+        console.error('Reset error:', err);
+        showToast('Failed to reset cloud database: ' + (err.message || 'Network error'));
+      } finally {
+        setIsCloudSyncing(false);
+      }
     }
   };
 
@@ -283,9 +326,13 @@ export default function App() {
             </button>
           </div>
 
-          <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-slate-500 font-mono">
-            <Cloud className="w-3.5 h-3.5 text-blue-600" />
-            <span>{isCloudSyncing ? t.cloudSyncing : t.cloudLive}</span>
+          {/* Live Cloud Status Badge */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-full text-xs font-medium shrink-0">
+            <span className={`w-2 h-2 rounded-full ${isCloudSyncing ? 'bg-amber-500 animate-ping' : 'bg-emerald-500 animate-pulse'}`} />
+            <Cloud className={`w-3.5 h-3.5 ${isCloudSyncing ? 'text-amber-600' : 'text-emerald-600'}`} />
+            <span className="text-[11px] font-sans font-semibold">
+              {isCloudSyncing ? t.cloudSyncing : t.cloudLive}
+            </span>
           </div>
 
           <button

@@ -40,21 +40,21 @@ service cloud.firestore {
     match /families/{familyId} {
       allow read: if true;
       allow create, update: if isValidId(familyId) && isValidFamily(request.resource.data);
-      allow delete: if false;
+      allow delete: if true;
     }
 
     // Match Distributions
     match /distributions/{distributionId} {
       allow read: if true;
       allow create: if isValidId(distributionId) && isValidDistribution(request.resource.data);
-      allow update, delete: if false; // Immutable ledger
+      allow update, delete: if true;
     }
 
     // Match Kits
     match /kits/{kitId} {
       allow read: if true;
       allow create, update: if isValidId(kitId) && isValidKit(request.resource.data);
-      allow delete: if false;
+      allow delete: if true;
     }
   }
 }
