@@ -1,0 +1,6 @@
+{
+  "name": "FloodRelief - Disaster Aid & Ration Distribution",
+  "description": "Comprehensive disaster relief management platform for tracking household registrations, ration kit distributions, duplicate prevention, and relief camp operations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

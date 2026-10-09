@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Validation for Family
+    function isValidFamily(data) {
+      return data.id is string && data.id.size() <= 32
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.phone is string && data.phone.size() <= 15
+        && data.village is string && data.village.size() > 0 && data.village.size() <= 120
+        && data.campName is string && data.campName.size() > 0 && data.campName.size() <= 120
+        && data.size is number && data.size > 0 && data.size <= 50;
+    }
+
+    // Validation for Distribution
+    function isValidDistribution(data) {
+      return data.id is string && data.id.size() <= 40
+        && data.familyId is string && data.familyId.size() <= 32
+        && data.familyName is string && data.familyName.size() <= 100
+        && data.kitType is string && data.kitType.size() <= 100
+        && data.quantity is number && data.quantity > 0 && data.quantity <= 100
+        && data.round is string && data.round.size() <= 80
+        && data.distributionDate is string && data.distributionDate.size() <= 20;
+    }
+
+    // Validation for Kit inventory
+    function isValidKit(data) {
+      return data.totalStock is number && data.totalStock >= 0;
+    }
+
+    // Match Families
+    match /families/{familyId} {
+      allow read: if true;
+      allow create, update: if isValidId(familyId) && isValidFamily(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Match Distributions
+    match /distributions/{distributionId} {
+      allow read: if true;
+      allow create: if isValidId(distributionId) && isValidDistribution(request.resource.data);
+      allow update, delete: if false; // Immutable ledger
+    }
+
+    // Match Kits
+    match /kits/{kitId} {
+      allow read: if true;
+      allow create, update: if isValidId(kitId) && isValidKit(request.resource.data);
+      allow delete: if false;
+    }
+  }
+}

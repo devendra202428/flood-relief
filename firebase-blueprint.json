@@ -1,0 +1,75 @@
+{
+  "entities": {
+    "Family": {
+      "title": "Family",
+      "description": "Registered disaster relief affected household entity",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 32, "description": "Household identifier (e.g. FL-001)" },
+        "name": { "type": "string", "maxLength": 100, "description": "Name of the family head" },
+        "phone": { "type": "string", "maxLength": 15, "description": "10-digit primary mobile contact" },
+        "village": { "type": "string", "maxLength": 120, "description": "Affected village, ward, or neighborhood" },
+        "campName": { "type": "string", "maxLength": 120, "description": "Assigned emergency shelter camp or sector" },
+        "size": { "type": "number", "description": "Total family member count" },
+        "vulnerabilities": {
+          "type": "array",
+          "description": "List of priority needs flags (infant, elderly, pregnant, disabled, single_parent)"
+        },
+        "specialNotes": { "type": "string", "maxLength": 500, "description": "Medical or critical vulnerability notes" },
+        "registeredAt": { "type": "string", "maxLength": 50, "description": "ISO timestamp of registration" },
+        "houseImage": { "type": "string", "maxLength": 500000, "description": "Compressed base64 dwelling photo" },
+        "houseImageHash": { "type": "string", "maxLength": 300, "description": "256-bit perceptual difference hash" },
+        "damageLevel": { "type": "string", "maxLength": 30, "description": "Flood damage severity rating" }
+      },
+      "required": ["id", "name", "phone", "village", "campName", "size", "registeredAt"]
+    },
+    "Distribution": {
+      "title": "Distribution",
+      "description": "Ration kit allocation and handover ledger record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 40, "description": "Ledger dispatch ID (e.g. DIST-...)" },
+        "familyId": { "type": "string", "maxLength": 32, "description": "Recipient household identifier" },
+        "familyName": { "type": "string", "maxLength": 100, "description": "Recipient household head name" },
+        "village": { "type": "string", "maxLength": 120, "description": "Village or ward" },
+        "campName": { "type": "string", "maxLength": 120, "description": "Relief camp location" },
+        "kitType": { "type": "string", "maxLength": 100, "description": "Type of ration kit provided" },
+        "quantity": { "type": "number", "description": "Quantity of kits allocated" },
+        "round": { "type": "string", "maxLength": 80, "description": "Relief operation round" },
+        "distributionDate": { "type": "string", "maxLength": 20, "description": "Date of handover (YYYY-MM-DD)" },
+        "officerName": { "type": "string", "maxLength": 100, "description": "Field officer or volunteer name" },
+        "isDuplicateOverride": { "type": "boolean", "description": "Whether duplicate distribution warning was overridden" },
+        "overrideReason": { "type": "string", "maxLength": 500, "description": "Supervisor justification for secondary distribution" },
+        "createdAt": { "type": "string", "maxLength": 50, "description": "ISO timestamp" }
+      },
+      "required": ["id", "familyId", "familyName", "kitType", "quantity", "round", "distributionDate"]
+    },
+    "KitTypeInfo": {
+      "title": "KitTypeInfo",
+      "description": "Relief kit type and warehouse stock reserve level",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 50, "description": "Unique kit identifier" },
+        "name": { "type": "string", "maxLength": 100, "description": "Name of ration package" },
+        "description": { "type": "string", "maxLength": 500, "description": "Kit package contents breakdown" },
+        "defaultUnit": { "type": "string", "maxLength": 30, "description": "Unit label" },
+        "totalStock": { "type": "number", "description": "Warehouse stock inventory count" }
+      },
+      "required": ["id", "name", "totalStock"]
+    }
+  },
+  "firestore": {
+    "/families/{familyId}": {
+      "schema": { "$ref": "#/entities/Family" },
+      "description": "Collection of flood-affected registered households"
+    },
+    "/distributions/{distributionId}": {
+      "schema": { "$ref": "#/entities/Distribution" },
+      "description": "Global distribution ledger of aid handovers"
+    },
+    "/kits/{kitId}": {
+      "schema": { "$ref": "#/entities/KitTypeInfo" },
+      "description": "Relief kit inventory definitions and stock levels"
+    }
+  }
+}
