@@ -15,8 +15,9 @@ service cloud.firestore {
       return data.id is string && data.id.size() <= 32
         && data.name is string && data.name.size() > 0 && data.name.size() <= 100
         && data.phone is string && data.phone.size() <= 15
+        && (!('electricityBillNo' in data) || (data.electricityBillNo is string && data.electricityBillNo.size() <= 20))
         && data.village is string && data.village.size() > 0 && data.village.size() <= 120
-        && data.campName is string && data.campName.size() > 0 && data.campName.size() <= 120
+        && (!('campName' in data) || (data.campName is string && data.campName.size() <= 120))
         && data.size is number && data.size > 0 && data.size <= 50;
     }
 

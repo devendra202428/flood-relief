@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { Family, VulnerabilityType, DamageLevel } from '../types';
-import { CAMPS } from '../data/initialData';
 import { HousePhotoCapture } from './HousePhotoCapture';
 import { DuplicateHouseMatch } from '../utils/imageHash';
 import { useTranslation } from '../i18n/LanguageContext';
-import { UserPlus, AlertCircle, CheckCircle, Printer, ArrowRight } from 'lucide-react';
+import { UserPlus, AlertCircle, CheckCircle, Printer, ArrowRight, Zap } from 'lucide-react';
 
 interface Props {
   nextId: string;
@@ -21,11 +20,11 @@ export const RegisterView: React.FC<Props> = ({
   onGoToDistribute,
   onPrintSlip,
 }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [electricityBillNo, setElectricityBillNo] = useState('');
   const [village, setVillage] = useState('');
-  const [campName, setCampName] = useState(CAMPS[0]);
   const [size, setSize] = useState<number>(4);
   const [vulnerabilities, setVulnerabilities] = useState<VulnerabilityType[]>([]);
   const [specialNotes, setSpecialNotes] = useState('');
@@ -46,6 +45,12 @@ export const RegisterView: React.FC<Props> = ({
   const cleanedPhone = phone.trim();
   const phoneDuplicate = cleanedPhone.length === 10
     ? existingFamilies.find((f) => f.phone === cleanedPhone)
+    : null;
+
+  // Check electricity bill duplicate dynamically
+  const cleanedElectricityBill = electricityBillNo.trim();
+  const electricityDuplicate = cleanedElectricityBill.length === 10
+    ? existingFamilies.find((f) => f.electricityBillNo === cleanedElectricityBill)
     : null;
 
   const handleVulnerabilityToggle = (type: VulnerabilityType) => {
@@ -75,6 +80,22 @@ export const RegisterView: React.FC<Props> = ({
       return;
     }
 
+    if (!/^[0-9]{10}$/.test(cleanedElectricityBill)) {
+      setErrorMessage(
+        language === 'hi'
+          ? 'बिजली बिल नंबर 10 अंकों का होना आवश्यक है (केवल अंक)।'
+          : 'Electricity Bill No. must be exactly 10 digits.'
+      );
+      return;
+    }
+
+    if (electricityDuplicate) {
+      setErrorMessage(
+        `${t.duplicateElectricityBillAlert} ${electricityDuplicate.name} (${electricityDuplicate.id}, ${electricityDuplicate.village}).`
+      );
+      return;
+    }
+
     if (!village.trim()) {
       setErrorMessage(t.villageWard + ' required');
       return;
@@ -96,8 +117,8 @@ export const RegisterView: React.FC<Props> = ({
       id: nextId,
       name: name.trim(),
       phone: cleanedPhone,
+      electricityBillNo: cleanedElectricityBill,
       village: village.trim(),
-      campName,
       size,
       vulnerabilities,
       specialNotes: specialNotes.trim() || undefined,
@@ -113,6 +134,7 @@ export const RegisterView: React.FC<Props> = ({
     // Reset form fields
     setName('');
     setPhone('');
+    setElectricityBillNo('');
     setVillage('');
     setSpecialNotes('');
     setVulnerabilities([]);
@@ -231,6 +253,35 @@ export const RegisterView: React.FC<Props> = ({
               )}
             </div>
 
+            {/* Electricity Bill Number (10 digits) */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>{t.electricityBillNo}</span> <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={10}
+                value={electricityBillNo}
+                onChange={(e) => setElectricityBillNo(e.target.value.replace(/\D/g, ''))}
+                placeholder={t.electricityBillPlaceholder}
+                className={`w-full px-3 py-2 text-xs border rounded-lg font-mono tabular-nums focus:outline-none focus:ring-2 ${
+                  electricityDuplicate
+                    ? 'border-red-400 focus:ring-red-400 bg-red-50/30'
+                    : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
+                }`}
+              />
+              {electricityDuplicate ? (
+                <p className="text-[11px] text-red-600 mt-1.5 flex items-center gap-1 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {t.duplicateElectricityBillAlert} {electricityDuplicate.name} ({electricityDuplicate.id})
+                </p>
+              ) : (
+                <p className="text-[10px] text-slate-400 mt-1">{t.electricityBillHelp}</p>
+              )}
+            </div>
+
             {/* Village / Ward */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -244,24 +295,6 @@ export const RegisterView: React.FC<Props> = ({
                 placeholder={t.villagePlaceholder}
                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
-            </div>
-
-            {/* Assigned Camp / Sector */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                {t.assignedCamp} <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={campName}
-                onChange={(e) => setCampName(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-              >
-                {CAMPS.map((camp) => (
-                  <option key={camp} value={camp}>
-                    {camp}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* Family Size */}
@@ -366,6 +399,7 @@ export const RegisterView: React.FC<Props> = ({
                 onClick={() => {
                   setName('');
                   setPhone('');
+                  setElectricityBillNo('');
                   setVillage('');
                   setSpecialNotes('');
                   setVulnerabilities([]);
@@ -378,7 +412,7 @@ export const RegisterView: React.FC<Props> = ({
               </button>
               <button
                 type="submit"
-                disabled={Boolean(phoneDuplicate) || Boolean(housePhotoData && housePhotoData.duplicateMatches.length > 0 && !housePhotoData.isOverruled)}
+                disabled={Boolean(phoneDuplicate) || Boolean(electricityDuplicate) || Boolean(housePhotoData && housePhotoData.duplicateMatches.length > 0 && !housePhotoData.isOverruled)}
                 className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-xs transition-colors"
               >
                 {t.submitRegister}

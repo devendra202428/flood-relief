@@ -51,6 +51,7 @@ export const DistributeView: React.FC<Props> = ({
           f.id.toLowerCase().includes(query) ||
           f.name.toLowerCase().includes(query) ||
           f.phone.includes(query) ||
+          (f.electricityBillNo && f.electricityBillNo.includes(query)) ||
           f.village.toLowerCase().includes(query)
       ).slice(0, 5)
     : [];
@@ -240,7 +241,12 @@ export const DistributeView: React.FC<Props> = ({
                       <strong className="text-slate-900">{f.name}</strong>
                       <span className="text-slate-500 ml-2">· {f.village} ({f.size} {t.persons})</span>
                     </div>
-                    <span className="text-[11px] text-slate-400 font-mono tabular-nums">{f.phone}</span>
+                    <div className="text-right">
+                      <span className="text-[11px] text-slate-500 font-mono tabular-nums block">{f.phone}</span>
+                      {f.electricityBillNo && (
+                        <span className="text-[10px] text-amber-700 font-mono block">EB: {f.electricityBillNo}</span>
+                      )}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -264,15 +270,23 @@ export const DistributeView: React.FC<Props> = ({
                   {selectedFamily.size} {t.familyMembersCount}
                 </span>
               </div>
-              <div className="text-xs text-slate-600 grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/60">
+              <div className="text-xs text-slate-600 grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 border-t border-slate-200/60">
                 <div>
                   <span className="text-slate-400">{t.villageCol}: </span>
                   <span className="font-medium text-slate-800">{selectedFamily.village}</span>
                 </div>
-                <div>
-                  <span className="text-slate-400">Camp: </span>
-                  <span className="font-medium text-slate-800">{selectedFamily.campName}</span>
-                </div>
+                {selectedFamily.campName && (
+                  <div>
+                    <span className="text-slate-400">Camp: </span>
+                    <span className="font-medium text-slate-800">{selectedFamily.campName}</span>
+                  </div>
+                )}
+                {selectedFamily.electricityBillNo && (
+                  <div>
+                    <span className="text-slate-400">EB Bill No: </span>
+                    <span className="font-mono font-semibold text-amber-900">{selectedFamily.electricityBillNo}</span>
+                  </div>
+                )}
               </div>
 
               {/* Priority flags if any */}

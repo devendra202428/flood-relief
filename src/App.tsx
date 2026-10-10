@@ -568,8 +568,6 @@ export default function App() {
             onPrintSlip={(f, dist) => handlePrintSlip(f, dist)}
             onExportFamiliesCSV={() => exportFamiliesToCSV(data.families, data.distributions)}
             onExportDistributionsCSV={() => exportDistributionsToCSV(data.distributions)}
-            onResetData={handleResetData}
-            onClearAllData={handleClearAllData}
             onDeleteFamily={handleDeleteFamily}
             onDeleteDistribution={handleDeleteDistribution}
             onUpdateKitStock={handleUpdateKitStock}

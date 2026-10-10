@@ -6,8 +6,9 @@ export interface Family {
   id: string; // e.g. FL-001
   name: string;
   phone: string;
+  electricityBillNo?: string; // 10-digit electricity consumer / bill account number
   village: string;
-  campName: string;
+  campName?: string;
   size: number;
   vulnerabilities: VulnerabilityType[];
   specialNotes?: string;
@@ -22,7 +23,7 @@ export interface Distribution {
   familyId: string;
   familyName: string;
   village: string;
-  campName: string;
+  campName?: string;
   kitType: string;
   quantity: number;
   round: string;

@@ -10,13 +10,21 @@ export async function processAndHashImage(
   return new Promise((resolve, reject) => {
     const handleElement = (imgOrVideo: HTMLVideoElement | HTMLImageElement) => {
       try {
+        if (imgOrVideo instanceof HTMLVideoElement && (imgOrVideo.videoWidth === 0 || imgOrVideo.readyState < 2)) {
+          throw new Error('Video stream is not ready or has zero dimensions');
+        }
+
         // 1. Create storage canvas (max 480x360 for crisp thumbnail & slip printing without blowing storage)
         const storageCanvas = document.createElement('canvas');
         const targetWidth = 480;
         const aspect =
           imgOrVideo instanceof HTMLVideoElement
-            ? (imgOrVideo.videoHeight || 3) / (imgOrVideo.videoWidth || 4)
-            : (imgOrVideo.naturalHeight || 3) / (imgOrVideo.naturalWidth || 4);
+            ? (imgOrVideo.videoHeight > 0 && imgOrVideo.videoWidth > 0
+                ? imgOrVideo.videoHeight / imgOrVideo.videoWidth
+                : 0.75)
+            : (imgOrVideo.naturalHeight > 0 && imgOrVideo.naturalWidth > 0
+                ? imgOrVideo.naturalHeight / imgOrVideo.naturalWidth
+                : 0.75);
         const targetHeight = Math.round(targetWidth * aspect) || 360;
 
         storageCanvas.width = targetWidth;

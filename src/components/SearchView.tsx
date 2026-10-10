@@ -34,8 +34,9 @@ export const SearchView: React.FC<Props> = ({
       f.id.toLowerCase().includes(term) ||
       f.name.toLowerCase().includes(term) ||
       f.phone.includes(term) ||
+      (f.electricityBillNo && f.electricityBillNo.includes(term)) ||
       f.village.toLowerCase().includes(term) ||
-      f.campName.toLowerCase().includes(term);
+      (f.campName ? f.campName.toLowerCase().includes(term) : false);
 
     if (!matchesSearch) return false;
 
@@ -215,7 +216,13 @@ export const SearchView: React.FC<Props> = ({
                         )}
                       </td>
                       <td className="py-3.5 px-4 font-mono text-slate-600 tabular-nums">
-                        {f.phone}
+                        <div>{f.phone}</div>
+                        {f.electricityBillNo && (
+                          <div className="text-[10px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 mt-0.5 inline-flex items-center gap-1">
+                            <span className="font-sans font-medium text-[9px] text-amber-600">EB:</span>
+                            <span>{f.electricityBillNo}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="text-slate-800">{f.village}</div>

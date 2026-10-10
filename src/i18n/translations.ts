@@ -55,6 +55,10 @@ export interface Translations {
   mobilePlaceholder: string;
   mobileHelp: string;
   alreadyRegisteredUnder: string;
+  electricityBillNo: string;
+  electricityBillPlaceholder: string;
+  electricityBillHelp: string;
+  duplicateElectricityBillAlert: string;
   villageWard: string;
   villagePlaceholder: string;
   assignedCamp: string;
@@ -87,6 +91,7 @@ export interface Translations {
   snapAndVerify: string;
   analyzing: string;
   launchCamera: string;
+  nativePhoneCamera: string;
   cameraAccessError: string;
   browsePhotoClick: string;
   browsePhotoSupport: string;
@@ -267,6 +272,10 @@ export const translations: Record<Language, Translations> = {
     mobilePlaceholder: '10-digit mobile number',
     mobileHelp: 'Used for duplicate verification and emergency alerts.',
     alreadyRegisteredUnder: 'Already registered under',
+    electricityBillNo: 'Electricity Bill No. (10 digits)',
+    electricityBillPlaceholder: '10-digit electricity consumer / CA number',
+    electricityBillHelp: '10-digit consumer / CA account number on electricity bill (used for address verification).',
+    duplicateElectricityBillAlert: 'This electricity bill number is already registered under',
     villageWard: 'Village / Submerged Ward / Colony',
     villagePlaceholder: 'e.g. Rampur Ward 3, Lowland Block',
     assignedCamp: 'Assigned Relief Camp / Shelter Station',
@@ -298,6 +307,7 @@ export const translations: Record<Language, Translations> = {
     snapAndVerify: 'Snap & Verify',
     analyzing: 'Analyzing...',
     launchCamera: 'Launch Camera',
+    nativePhoneCamera: 'Open Phone Camera',
     cameraAccessError: 'Could not access camera (device permission denied or no camera available). Please use file upload below.',
     browsePhotoClick: 'Click to browse photo from computer or phone gallery',
     browsePhotoSupport: 'Supports JPEG, PNG, WebP · Automatically compresses for local storage',
@@ -451,6 +461,10 @@ export const translations: Record<Language, Translations> = {
     mobilePlaceholder: '10 अंकों का मोबाइल नंबर',
     mobileHelp: 'दोहराव रोकने व आपातकालीन सूचना के लिए उपयोग किया जाता है।',
     alreadyRegisteredUnder: 'यह नंबर पहले से इस नाम पर पंजीकृत है:',
+    electricityBillNo: 'बिजली बिल नंबर (10 अंक)',
+    electricityBillPlaceholder: '10 अंकों का बिजली उपभोक्ता / CA नंबर',
+    electricityBillHelp: 'निवास व पता सत्यापन हेतु 10 अंकों का बिजली बिल उपभोक्ता खाता नंबर।',
+    duplicateElectricityBillAlert: 'यह बिजली बिल नंबर पहले से इस नाम पर पंजीकृत है:',
     villageWard: 'गाँव / जलमग्न वार्ड / बस्ती',
     villagePlaceholder: 'उदा. रामपुर वार्ड 3, निचला क्षेत्र',
     assignedCamp: 'आवंटित राहत शिविर / शरण स्थल',
@@ -482,6 +496,7 @@ export const translations: Record<Language, Translations> = {
     snapAndVerify: 'फोटो खींचें व जाँचें',
     analyzing: 'जाँच जारी है...',
     launchCamera: 'कैमरा शुरू करें',
+    nativePhoneCamera: 'फ़ोन कैमरा खोलें',
     cameraAccessError: 'कैमरा एक्सेस नहीं हो सका (अनुमति अस्वीकृत या कैमरा उपलब्ध नहीं)। कृपया नीचे फोटो अपलोड विकल्प चुनें।',
     browsePhotoClick: 'कंप्यूटर या मोबाइल गैलरी से फोटो चुनने के लिए क्लिक करें',
     browsePhotoSupport: 'JPEG, PNG, WebP समर्थित · स्टोरेज बचाने के लिए स्वतः कंप्रेस होगी',

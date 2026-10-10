@@ -8,6 +8,7 @@
         "id": { "type": "string", "maxLength": 32, "description": "Household identifier (e.g. FL-001)" },
         "name": { "type": "string", "maxLength": 100, "description": "Name of the family head" },
         "phone": { "type": "string", "maxLength": 15, "description": "10-digit primary mobile contact" },
+        "electricityBillNo": { "type": "string", "maxLength": 20, "description": "10-digit consumer electricity bill account number" },
         "village": { "type": "string", "maxLength": 120, "description": "Affected village, ward, or neighborhood" },
         "campName": { "type": "string", "maxLength": 120, "description": "Assigned emergency shelter camp or sector" },
         "size": { "type": "number", "description": "Total family member count" },

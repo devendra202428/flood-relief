@@ -114,6 +114,12 @@ export const ReliefSlipModal: React.FC<Props> = ({ family, distribution, onClose
               <span className="text-xs text-slate-500 block">{t.mobileNumber}</span>
               <span className="font-mono tabular-nums">{family.phone}</span>
             </div>
+            {family.electricityBillNo && (
+              <div>
+                <span className="text-xs text-slate-500 block">{t.electricityBillNo}</span>
+                <span className="font-mono font-semibold text-slate-900 tabular-nums">{family.electricityBillNo}</span>
+              </div>
+            )}
             <div>
               <span className="text-xs text-slate-500 block">{t.familySize}</span>
               <span className="font-semibold">{family.size} {t.persons}</span>
@@ -122,10 +128,12 @@ export const ReliefSlipModal: React.FC<Props> = ({ family, distribution, onClose
               <span className="text-xs text-slate-500 block">{t.villageWard}</span>
               <span>{family.village}</span>
             </div>
-            <div>
-              <span className="text-xs text-slate-500 block">{t.assignedCamp}</span>
-              <span>{family.campName}</span>
-            </div>
+            {family.campName && (
+              <div>
+                <span className="text-xs text-slate-500 block">{t.assignedCamp}</span>
+                <span>{family.campName}</span>
+              </div>
+            )}
           </div>
 
           {/* Vulnerability notice if any */}

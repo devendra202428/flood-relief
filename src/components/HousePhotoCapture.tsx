@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Family, DamageLevel } from '../types';
 import { useTranslation } from '../i18n/LanguageContext';
 import { processAndHashImage, findDuplicateHouses, DuplicateHouseMatch } from '../utils/imageHash';
@@ -13,6 +13,8 @@ import {
   FlipHorizontal,
   Image as ImageIcon,
   ShieldAlert,
+  Smartphone,
+  Loader2,
 } from 'lucide-react';
 
 interface Props {
@@ -40,8 +42,10 @@ export const HousePhotoCapture: React.FC<Props> = ({
   const { t } = useTranslation();
   const [activeMode, setActiveMode] = useState<'camera' | 'upload' | 'samples'>('camera');
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isCameraStarting, setIsCameraStarting] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const [flashActive, setFlashActive] = useState(false);
 
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(currentPhoto || null);
   const [computedHash, setComputedHash] = useState<string | null>(null);
@@ -50,61 +54,128 @@ export const HousePhotoCapture: React.FC<Props> = ({
   const [duplicateMatches, setDuplicateMatches] = useState<DuplicateHouseMatch[]>([]);
   const [isDuplicateOverruled, setIsDuplicateOverruled] = useState(false);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const nativeCameraInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // Helper to reliably attach media stream to HTMLVideoElement with mobile Safari & Android compatibility
+  const attachStreamToVideo = useCallback((video: HTMLVideoElement | null, stream: MediaStream | null) => {
+    if (!video || !stream) return;
+    try {
+      video.muted = true;
+      video.defaultMuted = true;
+      video.playsInline = true;
+      video.setAttribute('playsinline', 'true');
+      video.setAttribute('webkit-playsinline', 'true');
+      if (video.srcObject !== stream) {
+        video.srcObject = stream;
+      }
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Auto-play suppressed or awaiting interaction:', err);
+        });
+      }
+    } catch (err) {
+      console.warn('Error attaching stream to video element:', err);
+    }
+  }, []);
+
+  // Callback ref so when the video element mounts into the DOM, the stream is immediately attached
+  const setVideoRef = useCallback(
+    (node: HTMLVideoElement | null) => {
+      videoRef.current = node;
+      if (node && streamRef.current) {
+        attachStreamToVideo(node, streamRef.current);
+      }
+    },
+    [attachStreamToVideo]
+  );
+
   // Stop camera when unmounting or switching tabs
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {
+          // ignore
+        }
+      });
       streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setIsCameraActive(false);
-  };
+    setIsCameraStarting(false);
+  }, []);
 
   useEffect(() => {
     return () => {
       stopCamera();
     };
-  }, []);
+  }, [stopCamera]);
+
+  // Ensure stream stays attached if active state or facing mode changes
+  useEffect(() => {
+    if (isCameraActive && videoRef.current && streamRef.current) {
+      attachStreamToVideo(videoRef.current, streamRef.current);
+    }
+  }, [isCameraActive, facingMode, attachStreamToVideo]);
 
   // Start live webcam / mobile camera stream
-  const startCamera = async () => {
+  const startCamera = async (overrideFacing?: 'environment' | 'user') => {
     stopCamera();
     setCameraError(null);
-    try {
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: facingMode },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      };
+    setIsCameraStarting(true);
+    const targetFacing = overrideFacing || facingMode;
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+    try {
+      let stream: MediaStream;
+      try {
+        // Preferred high-res camera constraints
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: targetFacing },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+      } catch (idealErr) {
+        console.warn('Specific video constraints failed, trying basic video:', idealErr);
+        // Fallback to basic constraints if device cannot satisfy 1280x720 or ideal facing
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
       }
+
+      streamRef.current = stream;
       setIsCameraActive(true);
+      setIsCameraStarting(false);
+
+      // If video element is already mounted, attach stream immediately
+      if (videoRef.current) {
+        attachStreamToVideo(videoRef.current, stream);
+      }
     } catch (err: any) {
-      console.warn('Camera access failed, falling back to upload:', err);
-      setCameraError(
-        'Could not access camera (device permission denied or no camera available). Please use file upload below.'
-      );
+      console.warn('Camera access failed:', err);
+      setIsCameraStarting(false);
       setIsCameraActive(false);
-      setActiveMode('upload');
+      setCameraError(
+        t.cameraAccessError ||
+          'Could not access camera. Please allow camera permissions or use the Phone Camera / File Upload options below.'
+      );
     }
   };
 
   const handleFlipCamera = () => {
-    setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
-    setTimeout(() => {
-      startCamera();
-    }, 100);
+    const nextFacing = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextFacing);
+    startCamera(nextFacing);
   };
 
   // Analyze newly captured or uploaded image
@@ -131,15 +202,104 @@ export const HousePhotoCapture: React.FC<Props> = ({
       stopCamera();
     } catch (err) {
       console.error('Error analyzing house photo:', err);
+      setCameraError('Error processing photo. Please try again.');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Capture frame from video stream
-  const handleSnapCamera = () => {
-    if (!videoRef.current) return;
-    analyzeImage(videoRef.current);
+  // Capture frame from video stream with robust frame decoding & ImageCapture fallback
+  const handleSnapCamera = async () => {
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video && !stream) return;
+
+    setIsProcessing(true);
+    // Instant visual shutter flash
+    setFlashActive(true);
+    setTimeout(() => setFlashActive(false), 160);
+
+    try {
+      // Method 1: ImageCapture API if available (Supported on Chromium / Android)
+      if (stream && 'ImageCapture' in window) {
+        try {
+          const track = stream.getVideoTracks()[0];
+          if (track && track.readyState === 'live') {
+            const capturer = new (window as any).ImageCapture(track);
+            if (typeof capturer.takePhoto === 'function') {
+              const blob = await capturer.takePhoto();
+              const dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+              if (dataUrl && dataUrl.length > 500) {
+                await analyzeImage(dataUrl);
+                return;
+              }
+            } else if (typeof capturer.grabFrame === 'function') {
+              const bitmap = await capturer.grabFrame();
+              if (bitmap && bitmap.width > 0 && bitmap.height > 0) {
+                const canvas = document.createElement('canvas');
+                canvas.width = bitmap.width;
+                canvas.height = bitmap.height;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                  ctx.drawImage(bitmap, 0, 0);
+                  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                  if (dataUrl && dataUrl.length > 500) {
+                    await analyzeImage(dataUrl);
+                    return;
+                  }
+                }
+              }
+            }
+          }
+        } catch (imgCapErr) {
+          console.warn('ImageCapture failed, falling back to video canvas:', imgCapErr);
+        }
+      }
+
+      // Method 2: High-resolution Canvas snapshot from HTMLVideoElement
+      if (video) {
+        // Ensure video has received and decoded at least one frame
+        if (video.videoWidth === 0 || video.readyState < 2) {
+          await new Promise<void>((resolve) => {
+            let count = 0;
+            const interval = setInterval(() => {
+              count++;
+              if ((video.videoWidth > 0 && video.readyState >= 2) || count > 12) {
+                clearInterval(interval);
+                resolve();
+              }
+            }, 80);
+          });
+        }
+
+        const width = video.videoWidth || 640;
+        const height = video.videoHeight || 480;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Could not get canvas context');
+
+        ctx.drawImage(video, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+        if (!dataUrl || dataUrl.length < 500) {
+          throw new Error('Captured image is blank or invalid');
+        }
+
+        await analyzeImage(dataUrl);
+      }
+    } catch (err: any) {
+      console.error('Camera snap failed:', err);
+      setCameraError('Unable to capture picture from camera feed. Please try again or tap "Open Phone Camera".');
+      setIsProcessing(false);
+    }
   };
 
   // File upload handler
@@ -189,6 +349,23 @@ export const HousePhotoCapture: React.FC<Props> = ({
 
   return (
     <div className="space-y-4">
+      {/* Hidden file inputs for direct camera & gallery upload */}
+      <input
+        ref={nativeCameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+
       {/* If Photo is ALREADY captured/selected -> Show Preview & Duplicate Diagnostics */}
       {previewPhoto ? (
         <div className="space-y-4">
@@ -201,7 +378,7 @@ export const HousePhotoCapture: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleRetake}
-                className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-300 px-2.5 py-1 rounded-md hover:bg-slate-50 transition-colors"
+                className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-300 px-2.5 py-1 rounded-md hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 {t.retakeReplace}
               </button>
@@ -209,7 +386,7 @@ export const HousePhotoCapture: React.FC<Props> = ({
 
             {/* Photo preview + Damage level */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
-              <div className="relative aspect-4/3 rounded-lg overflow-hidden border border-slate-200 bg-slate-900 max-w-xs">
+              <div className="relative aspect-4/3 rounded-lg overflow-hidden border border-slate-200 bg-slate-900 max-w-xs shadow-inner">
                 <img
                   src={previewPhoto}
                   alt="Captured flood damaged house"
@@ -343,25 +520,21 @@ export const HousePhotoCapture: React.FC<Props> = ({
                     onChange={handleOverruleToggle}
                     className="rounded text-red-600 focus:ring-red-500 mt-0.5"
                   />
-                  <span>
-                    {t.supervisorOverrideCheck}
-                  </span>
+                  <span>{t.supervisorOverrideCheck}</span>
                 </label>
               </div>
             </div>
           ) : (
             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>
-                {t.uniqueDwellingVerified}
-              </span>
+              <span>{t.uniqueDwellingVerified}</span>
             </div>
           )}
         </div>
       ) : (
         /* Capture / Upload Interface */
         <div className="border border-slate-300 rounded-xl p-4 bg-white space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
               <span className="text-xs font-bold text-slate-900 block">
                 {t.photoSectionTitle}
@@ -371,14 +544,14 @@ export const HousePhotoCapture: React.FC<Props> = ({
               </span>
             </div>
             {/* Mode selector */}
-            <div className="flex p-0.5 bg-slate-100 rounded-lg text-xs font-semibold">
+            <div className="flex p-0.5 bg-slate-100 rounded-lg text-xs font-semibold shrink-0">
               <button
                 type="button"
                 onClick={() => {
                   setActiveMode('camera');
                   startCamera();
                 }}
-                className={`px-3 py-1 rounded-md transition-colors ${
+                className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
                   activeMode === 'camera' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600'
                 }`}
               >
@@ -390,7 +563,7 @@ export const HousePhotoCapture: React.FC<Props> = ({
                   stopCamera();
                   setActiveMode('upload');
                 }}
-                className={`px-3 py-1 rounded-md transition-colors ${
+                className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
                   activeMode === 'upload' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600'
                 }`}
               >
@@ -402,7 +575,7 @@ export const HousePhotoCapture: React.FC<Props> = ({
                   stopCamera();
                   setActiveMode('samples');
                 }}
-                className={`px-3 py-1 rounded-md transition-colors ${
+                className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
                   activeMode === 'samples' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600'
                 }`}
               >
@@ -415,31 +588,37 @@ export const HousePhotoCapture: React.FC<Props> = ({
           {activeMode === 'camera' && (
             <div className="space-y-3">
               {isCameraActive ? (
-                <div className="relative rounded-lg overflow-hidden bg-slate-950 aspect-4/3 max-w-md mx-auto border border-slate-800">
+                <div className="relative rounded-lg overflow-hidden bg-slate-950 aspect-4/3 max-w-md mx-auto border border-slate-800 shadow-md">
                   <video
-                    ref={videoRef}
+                    ref={setVideoRef}
                     playsInline
                     autoPlay
                     muted
                     className="w-full h-full object-cover"
                   />
+
+                  {/* Shutter flash overlay */}
+                  {flashActive && (
+                    <div className="absolute inset-0 bg-white opacity-90 pointer-events-none transition-opacity duration-150" />
+                  )}
+
                   {/* Viewfinder crosshairs */}
                   <div className="absolute inset-4 border border-white/40 rounded-lg pointer-events-none flex flex-col justify-between p-2">
-                    <span className="text-[10px] text-white/80 bg-black/50 px-2 py-0.5 rounded self-start">
+                    <span className="text-[10px] text-white/90 bg-black/60 px-2 py-0.5 rounded self-start backdrop-blur-xs font-medium">
                       {t.alignDwellingGuide}
                     </span>
-                    <span className="text-[10px] text-white/80 bg-black/50 px-2 py-0.5 rounded self-end">
+                    <span className="text-[10px] text-white/90 bg-black/60 px-2 py-0.5 rounded self-end backdrop-blur-xs font-medium">
                       {t.autoHashNotice}
                     </span>
                   </div>
 
                   {/* Camera Controls Overlay */}
-                  <div className="absolute bottom-3 inset-x-0 flex items-center justify-center gap-4">
+                  <div className="absolute bottom-3 inset-x-0 flex items-center justify-center gap-3 px-3">
                     <button
                       type="button"
                       onClick={handleFlipCamera}
                       title="Flip Camera"
-                      className="p-2.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors backdrop-blur-xs"
+                      className="p-2.5 bg-black/70 hover:bg-black/90 text-white rounded-full transition-colors backdrop-blur-xs cursor-pointer shadow"
                     >
                       <FlipHorizontal className="w-4 h-4" />
                     </button>
@@ -447,25 +626,38 @@ export const HousePhotoCapture: React.FC<Props> = ({
                       type="button"
                       onClick={handleSnapCamera}
                       disabled={isProcessing}
-                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-full shadow-lg transition-transform active:scale-95 flex items-center gap-2"
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-full shadow-lg transition-transform active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-60"
                     >
-                      <Camera className="w-4 h-4" />
-                      <span>{isProcessing ? t.analyzing : t.snapAndVerify}</span>
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>{t.analyzing}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="w-4 h-4" />
+                          <span>{t.snapAndVerify}</span>
+                        </>
+                      )}
                     </button>
                     <button
                       type="button"
                       onClick={stopCamera}
-                      title="Cancel Camera"
-                      className="p-2.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors backdrop-blur-xs"
+                      title="Close Camera"
+                      className="p-2.5 bg-black/70 hover:bg-black/90 text-white rounded-full transition-colors backdrop-blur-xs cursor-pointer shadow"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="py-8 text-center space-y-3 border border-dashed border-slate-300 rounded-lg bg-slate-50">
+                <div className="py-8 text-center space-y-4 border border-dashed border-slate-300 rounded-lg bg-slate-50">
                   <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 mx-auto flex items-center justify-center">
-                    <Camera className="w-6 h-6" />
+                    {isCameraStarting ? (
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    ) : (
+                      <Camera className="w-6 h-6" />
+                    )}
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-slate-800">
@@ -475,19 +667,43 @@ export const HousePhotoCapture: React.FC<Props> = ({
                       {t.photoSectionSubtitle}
                     </p>
                   </div>
+
                   {cameraError && (
-                    <p className="text-xs text-red-600 max-w-sm mx-auto px-4 font-medium">
-                      {t.cameraAccessError}
-                    </p>
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 max-w-sm mx-auto flex items-center gap-2 text-left font-medium">
+                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                      <span>{cameraError}</span>
+                    </div>
                   )}
-                  <button
-                    type="button"
-                    onClick={startCamera}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors inline-flex items-center gap-1.5"
-                  >
-                    <Camera className="w-3.5 h-3.5" />
-                    <span>{t.launchCamera}</span>
-                  </button>
+
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => startCamera()}
+                      disabled={isCameraStarting}
+                      className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-60"
+                    >
+                      {isCameraStarting ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Starting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>{t.launchCamera}</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => nativeCameraInputRef.current?.click()}
+                      className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Smartphone className="w-3.5 h-3.5 text-blue-600" />
+                      <span>{t.nativePhoneCamera}</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -511,21 +727,26 @@ export const HousePhotoCapture: React.FC<Props> = ({
                     {t.browsePhotoSupport}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-md shadow-2xs pointer-events-none"
-                >
-                  {t.selectPhotoFile}
-                </button>
+                <div className="flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-md shadow-2xs pointer-events-none"
+                  >
+                    {t.selectPhotoFile}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      nativeCameraInputRef.current?.click();
+                    }}
+                    className="px-3.5 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-md shadow-2xs cursor-pointer hover:bg-blue-100 transition-colors inline-flex items-center gap-1"
+                  >
+                    <Smartphone className="w-3 h-3" />
+                    <span>{t.nativePhoneCamera}</span>
+                  </button>
+                </div>
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
             </div>
           )}
 
@@ -542,7 +763,7 @@ export const HousePhotoCapture: React.FC<Props> = ({
                       key={sample.id}
                       type="button"
                       onClick={() => handleSelectSample(sample.dataUrl, sample.damageLevel)}
-                      className="group p-2 rounded-lg border border-slate-200 hover:border-blue-500 hover:bg-blue-50/30 text-left transition-all space-y-1.5 bg-white"
+                      className="group p-2 rounded-lg border border-slate-200 hover:border-blue-500 hover:bg-blue-50/30 text-left transition-all space-y-1.5 bg-white cursor-pointer"
                     >
                       <div className="aspect-4/3 rounded overflow-hidden bg-slate-100 border border-slate-200">
                         <img

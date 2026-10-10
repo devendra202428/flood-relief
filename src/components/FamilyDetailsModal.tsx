@@ -1,7 +1,7 @@
 import React from 'react';
 import { Family, Distribution } from '../types';
 import { useTranslation } from '../i18n/LanguageContext';
-import { X, PackageCheck, AlertCircle, Phone, MapPin, Users, Calendar, PlusCircle, Trash2 } from 'lucide-react';
+import { X, PackageCheck, AlertCircle, Phone, MapPin, Users, Calendar, PlusCircle, Trash2, Zap } from 'lucide-react';
 
 interface Props {
   family: Family;
@@ -83,19 +83,32 @@ export const FamilyDetailsModal: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Location & Camp */}
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg flex items-start gap-3">
-            <MapPin className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
-            <div className="text-xs space-y-1">
-              <div>
-                <span className="text-slate-500">{t.villageWard}: </span>
-                <span className="font-semibold text-slate-800">{family.village}</span>
-              </div>
-              <div>
-                <span className="text-slate-500">{t.assignedCamp}: </span>
-                <span className="font-semibold text-slate-800">{family.campName}</span>
+          {/* Location & Camp & Electricity Bill */}
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+            <div className="flex items-start gap-3">
+              <MapPin className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+              <div className="text-xs space-y-1">
+                <div>
+                  <span className="text-slate-500">{t.villageWard}: </span>
+                  <span className="font-semibold text-slate-800">{family.village}</span>
+                </div>
+                {family.campName && (
+                  <div>
+                    <span className="text-slate-500">{t.assignedCamp}: </span>
+                    <span className="font-semibold text-slate-800">{family.campName}</span>
+                  </div>
+                )}
               </div>
             </div>
+            {family.electricityBillNo && (
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-200 text-xs">
+                <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="text-slate-500">{t.electricityBillNo}:</span>
+                <span className="font-mono font-bold text-slate-900 tabular-nums bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  {family.electricityBillNo}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Dwelling / House Damage Photo */}
