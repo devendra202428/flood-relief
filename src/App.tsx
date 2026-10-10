@@ -14,9 +14,12 @@ import {
   subscribeToDistributions,
   subscribeToKits,
   saveFamilyToCloud,
+  deleteFamilyFromCloud,
   saveDistributionToCloud,
+  deleteDistributionFromCloud,
   saveKitStockToCloud,
   resetCloudDataToSample,
+  clearAllRecordsAndDemoData,
 } from './services/reliefCloudService';
 
 function getNextIdNumber(families: Family[]): number {
@@ -97,31 +100,40 @@ export default function App() {
     seedInitialFirestoreDataIfEmpty();
 
     const unsubFamilies = subscribeToFamilies((cloudFamilies) => {
-      if (cloudFamilies.length > 0) {
-        setData((prev) => ({
+      setData((prev) => {
+        const nextId = cloudFamilies.length > 0 ? Math.max(prev.nextIdNumber, getNextIdNumber(cloudFamilies)) : 1;
+        const updated = {
           ...prev,
           families: cloudFamilies,
-          nextIdNumber: Math.max(prev.nextIdNumber, getNextIdNumber(cloudFamilies)),
-        }));
-      }
+          nextIdNumber: nextId,
+        };
+        saveStoredData(updated);
+        return updated;
+      });
       setIsCloudSyncing(false);
     });
 
     const unsubDists = subscribeToDistributions((cloudDists) => {
-      if (cloudDists.length > 0) {
-        setData((prev) => ({
+      setData((prev) => {
+        const updated = {
           ...prev,
           distributions: cloudDists,
-        }));
-      }
+        };
+        saveStoredData(updated);
+        return updated;
+      });
     });
 
     const unsubKits = subscribeToKits((cloudKits) => {
       if (cloudKits.length > 0) {
-        setData((prev) => ({
-          ...prev,
-          kits: cloudKits,
-        }));
+        setData((prev) => {
+          const updated = {
+            ...prev,
+            kits: cloudKits,
+          };
+          saveStoredData(updated);
+          return updated;
+        });
       }
     });
 
@@ -199,7 +211,11 @@ export default function App() {
 
   // Reset data handler - resets Firestore so both screens sync back together
   const handleResetData = async () => {
-    if (window.confirm('Reset all FloodRelief records and reload initial sample field data? This will sync across all connected screens.')) {
+    const isHi = language === 'hi';
+    const msg = isHi
+      ? 'क्या आप परीक्षण व डेमो के लिए प्रारंभिक 5 नमूना परिवार व वितरण डेटा दोबारा लोड करना चाहते हैं?'
+      : 'Reset all FloodRelief records and reload initial sample field data? This will sync across all connected screens.';
+    if (window.confirm(msg)) {
       try {
         setIsCloudSyncing(true);
         await resetCloudDataToSample();
@@ -211,10 +227,110 @@ export default function App() {
         };
         setData(resetState);
         saveStoredData(resetState);
-        showToast('Sample emergency relief database restored & synced across all screens.');
+        showToast(
+          isHi
+            ? 'प्रारंभिक 5 डेमो परिवार सफलतापूर्वक रीस्टोर कर दिए गए।'
+            : 'Sample emergency relief database restored & synced across all screens.'
+        );
       } catch (err: any) {
         console.error('Reset error:', err);
         showToast('Failed to reset cloud database: ' + (err.message || 'Network error'));
+      } finally {
+        setIsCloudSyncing(false);
+      }
+    }
+  };
+
+  // Clear all demo data handler - wipes sample data for fresh real-world operations
+  const handleClearAllData = async () => {
+    const isHi = language === 'hi';
+    const confirmMsg = isHi
+      ? 'क्या आप सभी डेमो परिवार (FL-001 से FL-005) और वितरण रिकॉर्ड हटाकर शून्य से वास्तविक राहत कार्य शुरू करना चाहते हैं? यह क्लाउड और दोनों स्क्रीनों से डेटा हटा देगा।'
+      : 'Remove all demo sample households and mock distributions from Cloud Firestore & local cache? This will start fresh with 0 records starting at FL-001.';
+
+    if (window.confirm(confirmMsg)) {
+      try {
+        setIsCloudSyncing(true);
+        await clearAllRecordsAndDemoData();
+        const emptyState: StorageData = {
+          families: [],
+          distributions: [],
+          kits: data.kits.length > 0 ? data.kits : INITIAL_KITS,
+          nextIdNumber: 1,
+        };
+        setData(emptyState);
+        saveStoredData(emptyState);
+        showToast(
+          isHi
+            ? 'सभी डेमो रिकॉर्ड हटा दिए गए। FL-001 से वास्तविक पंजीकरण के लिए तैयार।'
+            : 'All demo records removed. Ready for live operations starting from FL-001.'
+        );
+      } catch (err: any) {
+        console.error('Clear demo data error:', err);
+        showToast('Failed to clear records: ' + (err.message || 'Error'));
+      } finally {
+        setIsCloudSyncing(false);
+      }
+    }
+  };
+
+  // Delete individual household handler
+  const handleDeleteFamily = async (familyId: string) => {
+    const isHi = language === 'hi';
+    const target = data.families.find((f) => f.id === familyId);
+    const name = target ? target.name : familyId;
+    const confirmMsg = isHi
+      ? `क्या आप परिवार ${familyId} (${name}) का रिकॉर्ड हटाना चाहते हैं?`
+      : `Delete household ${familyId} (${name})? This will remove them from the cloud database.`;
+
+    if (window.confirm(confirmMsg)) {
+      try {
+        setIsCloudSyncing(true);
+        setData((prev) => {
+          const updatedFamilies = prev.families.filter((f) => f.id !== familyId);
+          const updatedDistributions = prev.distributions.filter((d) => d.familyId !== familyId);
+          const updated = {
+            ...prev,
+            families: updatedFamilies,
+            distributions: updatedDistributions,
+          };
+          saveStoredData(updated);
+          return updated;
+        });
+        await deleteFamilyFromCloud(familyId);
+        showToast(isHi ? `परिवार ${familyId} हटा दिया गया।` : `Household ${familyId} deleted & synced.`);
+      } catch (err: any) {
+        console.error('Failed to delete family:', err);
+        showToast('Error deleting family: ' + (err.message || 'Cloud error'));
+      } finally {
+        setIsCloudSyncing(false);
+      }
+    }
+  };
+
+  // Delete individual distribution ledger entry handler
+  const handleDeleteDistribution = async (distId: string) => {
+    const isHi = language === 'hi';
+    const confirmMsg = isHi
+      ? `क्या आप वितरण रिकॉर्ड ${distId} को हटाना चाहते हैं?`
+      : `Delete distribution record ${distId}?`;
+
+    if (window.confirm(confirmMsg)) {
+      try {
+        setIsCloudSyncing(true);
+        setData((prev) => {
+          const updated = {
+            ...prev,
+            distributions: prev.distributions.filter((d) => d.id !== distId),
+          };
+          saveStoredData(updated);
+          return updated;
+        });
+        await deleteDistributionFromCloud(distId);
+        showToast(isHi ? `वितरण रिकॉर्ड ${distId} हटा दिया गया।` : `Distribution ${distId} deleted.`);
+      } catch (err: any) {
+        console.error('Failed to delete distribution:', err);
+        showToast('Error deleting distribution: ' + (err.message || 'Cloud error'));
       } finally {
         setIsCloudSyncing(false);
       }
@@ -453,6 +569,9 @@ export default function App() {
             onExportFamiliesCSV={() => exportFamiliesToCSV(data.families, data.distributions)}
             onExportDistributionsCSV={() => exportDistributionsToCSV(data.distributions)}
             onResetData={handleResetData}
+            onClearAllData={handleClearAllData}
+            onDeleteFamily={handleDeleteFamily}
+            onDeleteDistribution={handleDeleteDistribution}
             onUpdateKitStock={handleUpdateKitStock}
           />
         )}
@@ -466,6 +585,7 @@ export default function App() {
           onClose={() => setSelectedFamilyForModal(null)}
           onQuickDistribute={handleGoToDistribute}
           onPrintSlip={handlePrintSlip}
+          onDeleteFamily={handleDeleteFamily}
         />
       )}
 

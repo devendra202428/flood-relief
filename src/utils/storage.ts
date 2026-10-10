@@ -29,6 +29,16 @@ export function loadStoredData(): StorageData {
     console.warn('Failed to parse stored FloodRelief data, loading defaults', err);
   }
 
+  const isCleared = typeof window !== 'undefined' && localStorage.getItem('floodrelief_demo_cleared') === 'true';
+  if (isCleared) {
+    return {
+      families: [],
+      distributions: [],
+      kits: INITIAL_KITS,
+      nextIdNumber: 1,
+    };
+  }
+
   return {
     families: INITIAL_FAMILIES,
     distributions: INITIAL_DISTRIBUTIONS,

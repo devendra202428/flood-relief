@@ -167,6 +167,11 @@ export interface Translations {
   resetDemoDataTitle: string;
   resetDemoDataDesc: string;
   resetDemoDataBtn: string;
+  clearDemoDataTitle: string;
+  clearDemoDataDesc: string;
+  clearDemoDataBtn: string;
+  deleteHousehold: string;
+  deleteLedgerEntry: string;
 
   // Slip / Voucher
   slipHeaderOrg: string;
@@ -368,8 +373,13 @@ export const translations: Record<Language, Translations> = {
     totalStock: 'Total Stock',
     save: 'Save',
     resetDemoDataTitle: 'Reset / Reload Sample Relief Data',
-    resetDemoDataDesc: 'Clear all customized records and restore initial emergency disaster relief seed data.',
-    resetDemoDataBtn: 'Reset Demo Data',
+    resetDemoDataDesc: 'Restore initial emergency disaster relief sample households and ledger for testing/training.',
+    resetDemoDataBtn: 'Reload Demo Data',
+    clearDemoDataTitle: 'Clear Demo Data / Start Live Field Records',
+    clearDemoDataDesc: 'Permanently remove all 5 sample households and test distributions from Cloud Firestore & local cache so actual disaster victims can be registered cleanly starting from FL-001.',
+    clearDemoDataBtn: 'Remove Demo Data & Start Fresh',
+    deleteHousehold: 'Delete Household',
+    deleteLedgerEntry: 'Delete Record',
 
     slipHeaderOrg: 'DISASTER RELIEF EMERGENCY RESPONSE',
     slipHeaderTitle: 'FloodRelief Official Ration Voucher',
@@ -546,9 +556,14 @@ export const translations: Record<Language, Translations> = {
     remainingBuffer: 'शेष बफर स्टॉक',
     totalStock: 'कुल आवक स्टॉक',
     save: 'सहेजें',
-    resetDemoDataTitle: 'डेमो डेटा रीसेट / रीलोड करें',
-    resetDemoDataDesc: 'सभी बदलाव हटाकर आपातकालीन राहत का प्रारंभिक डेटा रीस्टोर करें।',
-    resetDemoDataBtn: 'डेटा रीसेट करें',
+    resetDemoDataTitle: 'डेमो डेटा रीलोड करें',
+    resetDemoDataDesc: 'प्रशिक्षण व परीक्षण के लिए 5 नमूना परिवार व वितरण रिकॉर्ड दोबारा लोड करें।',
+    resetDemoDataBtn: 'डेमो डेटा लोड करें',
+    clearDemoDataTitle: 'डेमो डेटा हटाएं / वास्तविक राहत कार्य शुरू करें',
+    clearDemoDataDesc: 'क्लाउड फायरस्टोर व लोकल कैशे से सभी 5 नमूना परिवारों और परीक्षण वितरणों को पूरी तरह हटाएं ताकि वास्तविक पीड़ितों का नया पंजीकरण FL-001 से शून्य रिकॉर्ड के साथ शुरू हो सके।',
+    clearDemoDataBtn: 'सभी डेमो डेटा हटाएं (नया आरंभ)',
+    deleteHousehold: 'परिवार हटाएं',
+    deleteLedgerEntry: 'रिकॉर्ड हटाएं',
 
     slipHeaderOrg: 'आपदा राहत एवं आपातकालीन प्रबंधन',
     slipHeaderTitle: 'बाढ़ राहत आधिकारिक राशन वाउचर',

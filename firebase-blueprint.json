@@ -56,6 +56,15 @@
         "totalStock": { "type": "number", "description": "Warehouse stock inventory count" }
       },
       "required": ["id", "name", "totalStock"]
+    },
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "System flags and operational initialization state",
+      "type": "object",
+      "properties": {
+        "demoDataCleared": { "type": "boolean", "description": "Whether demo sample data has been cleared" },
+        "clearedAt": { "type": "string", "maxLength": 50, "description": "ISO timestamp when demo data was cleared" }
+      }
     }
   },
   "firestore": {
@@ -70,6 +79,10 @@
     "/kits/{kitId}": {
       "schema": { "$ref": "#/entities/KitTypeInfo" },
       "description": "Relief kit inventory definitions and stock levels"
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SystemSettings" },
+      "description": "System configuration flags and demo state tracking"
     }
   }
 }

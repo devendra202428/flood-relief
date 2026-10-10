@@ -1,7 +1,7 @@
 import React from 'react';
 import { Family, Distribution } from '../types';
 import { useTranslation } from '../i18n/LanguageContext';
-import { X, PackageCheck, AlertCircle, Phone, MapPin, Users, Calendar, PlusCircle } from 'lucide-react';
+import { X, PackageCheck, AlertCircle, Phone, MapPin, Users, Calendar, PlusCircle, Trash2 } from 'lucide-react';
 
 interface Props {
   family: Family;
@@ -9,6 +9,7 @@ interface Props {
   onClose: () => void;
   onQuickDistribute: (family: Family) => void;
   onPrintSlip: (family: Family, distribution?: Distribution) => void;
+  onDeleteFamily?: (familyId: string) => void;
 }
 
 export const FamilyDetailsModal: React.FC<Props> = ({
@@ -17,6 +18,7 @@ export const FamilyDetailsModal: React.FC<Props> = ({
   onClose,
   onQuickDistribute,
   onPrintSlip,
+  onDeleteFamily,
 }) => {
   const { t, language } = useTranslation();
   const familyDistributions = distributions.filter((d) => d.familyId === family.id);
@@ -222,12 +224,27 @@ export const FamilyDetailsModal: React.FC<Props> = ({
 
         {/* Modal Footer */}
         <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
-          >
-            {t.closeBtn}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+            >
+              {t.closeBtn}
+            </button>
+            {onDeleteFamily && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onDeleteFamily(family.id);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                title={t.deleteHousehold}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{t.deleteHousehold}</span>
+              </button>
+            )}
+          </div>
           <button
             onClick={() => {
               onClose();
