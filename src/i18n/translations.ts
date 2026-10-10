@@ -194,6 +194,19 @@ export interface Translations {
   printReceiptBtn: string;
   closeBtn: string;
 
+  // PWA Install
+  installAppBtn: string;
+  installAppTitle: string;
+  installAppSubtitle: string;
+  installAndroidTitle: string;
+  installAndroidStep1: string;
+  installAndroidStep2: string;
+  installAndroidStep3: string;
+  installIOSTitle: string;
+  installIOSStep1: string;
+  installIOSStep2: string;
+  installIOSStep3: string;
+
   // Footer & Global
   footerHub: string;
   footerLocalNotice: string;
@@ -406,6 +419,18 @@ export const translations: Record<Language, Translations> = {
     printReceiptBtn: 'Print Receipt',
     closeBtn: 'Close',
 
+    installAppBtn: 'Install App on Phone',
+    installAppTitle: 'Open & Install as App on Your Phone',
+    installAppSubtitle: 'Install FloodRelief directly on your Android or iPhone home screen. Works fast, fullscreen, and offline like a native app.',
+    installAndroidTitle: 'Android (Chrome / Edge)',
+    installAndroidStep1: 'Tap the 3 dots menu (⋮) in the top-right corner of Chrome.',
+    installAndroidStep2: 'Tap "Install app" or "Add to Home screen".',
+    installAndroidStep3: 'Tap "Install". The FloodRelief icon will appear on your phone home screen!',
+    installIOSTitle: 'iPhone / iPad (Safari)',
+    installIOSStep1: 'Tap the Share button [↑] at the bottom toolbar in Safari.',
+    installIOSStep2: 'Scroll down and tap "Add to Home Screen" (+).',
+    installIOSStep3: 'Tap "Add" in the top-right. The app opens fullscreen with no browser bars!',
+
     footerHub: 'FloodRelief Operations Hub',
     footerLocalNotice: 'Field data stored in Cloud Firestore & local cache. Download CSV backups regularly before shifting personnel.',
   },
@@ -594,6 +619,18 @@ export const translations: Record<Language, Translations> = {
     officerSeal: 'शिविर वितरण अधिकारी की मुहर व हस्ताक्षर',
     printReceiptBtn: 'रसीद प्रिंट करें',
     closeBtn: 'बंद करें',
+
+    installAppBtn: 'फ़ोन में ऐप की तरह इंस्टॉल करें',
+    installAppTitle: 'अपने फ़ोन में ऐप की तरह कैसे खोलें और इंस्टॉल करें',
+    installAppSubtitle: 'FloodRelief को अपने Android या iPhone की होम स्क्रीन पर सीधे इंस्टॉल करें। यह बिना ब्राउज़र बार के असली ऐप की तरह तेज़ और फुलस्क्रीन काम करता है।',
+    installAndroidTitle: 'Android फ़ोन (Google Chrome)',
+    installAndroidStep1: 'Chrome ब्राउज़र में ऊपर दाईं ओर 3 डॉट्स (⋮) पर टैप करें।',
+    installAndroidStep2: '"Install app" (ऐप इंस्टॉल करें) या "Add to Home screen" (होम स्क्रीन में जोड़ें) पर क्लिक करें।',
+    installAndroidStep3: '"Install" (इंस्टॉल) पर टैप करें। ऐप का आइकन आपके फ़ोन की होम स्क्रीन पर आ जाएगा!',
+    installIOSTitle: 'iPhone / iPad (Safari ब्राउज़र)',
+    installIOSStep1: 'Safari में नीचे शेयर बटन [↑] (Share Icon) पर टैप करें।',
+    installIOSStep2: 'नीचे स्क्रॉल करें और "Add to Home Screen" (+ होम स्क्रीन में जोड़ें) पर टैप करें।',
+    installIOSStep3: 'ऊपर दाईं ओर "Add" (जोड़ें) दबाएँ। यह असली ऐप की तरह फुलस्क्रीन खुलेगा!',
 
     footerHub: 'बाढ़ राहत संचालन केंद्र',
     footerLocalNotice: 'डेटा क्लाउड फायरस्टोर व लोकल कैशे में सुरक्षित है। शिफ्ट समाप्ति से पहले नियमित CSV बैकअप लें।',

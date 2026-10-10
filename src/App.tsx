@@ -43,6 +43,7 @@ import { SearchView } from './components/SearchView';
 import { RecordsView } from './components/RecordsView';
 import { FamilyDetailsModal } from './components/FamilyDetailsModal';
 import { ReliefSlipModal } from './components/ReliefSlipModal';
+import { PWAInstallButton } from './components/PWAInstallButton';
 import { useTranslation } from './i18n/LanguageContext';
 
 import {
@@ -441,6 +442,9 @@ export default function App() {
               <span>हिन्दी</span>
             </button>
           </div>
+
+          {/* PWA Install on Phone Button */}
+          <PWAInstallButton />
 
           {/* Live Cloud Status Badge */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-full text-xs font-medium shrink-0">
